@@ -1,6 +1,8 @@
+from langchain_community.vectorstores import FAISS
+from langchain_openai import OpenAIEmbeddings
 from langchain_community.document_loaders import UnstructuredMarkdownLoader
-from langchain_core.documents import Document
 import os
+
 
 def get_readme_paths(directory):
     """
@@ -19,9 +21,11 @@ def get_readme_paths(directory):
                 readme_paths.append(os.path.join(root, file))
     return readme_paths
 
+
 def load_all_readmes(directory):
     """
-    Recursively reads all files named README using UnstructuredMarkdownLoader and returns the parsed files.
+    Recursively reads all files named README using UnstructuredMarkdownLoader
+    and returns the parsed files.
 
     Args:
         directory (str): The root directory to search for README files.
@@ -33,15 +37,24 @@ def load_all_readmes(directory):
     readme_paths = get_readme_paths(directory)
     for file_path in readme_paths:
         try:
-            loader = UnstructuredMarkdownLoader(file_path, mode='elements')
-            documents = loader.load()
-            for doc in documents:
-                readme_contents.append(doc.page_content)
+            document = UnstructuredMarkdownLoader(
+                file_path, mode='elements').load()
+            readme_contents.extend(document)
+            print(f"Loaded {file_path} with {len(document)} elements.")
         except Exception as e:
             print(f"Error loading {file_path}: {e}")
     return readme_contents
 
-# Example usage:
-readmes = load_all_readmes("/home/ekuris/Desktop/repos/nfv_ansible_tests")
-print(readmes)
 
+def embed_from_path(path):
+    """
+    Embeds the README files from the given path and returns a retriever.
+
+    Args:
+        path (str): The root directory to search for README files.
+
+    Returns:
+        FAISS: A FAISS vector store retriever.
+    """
+    documents = load_all_readmes(path)
+    return FAISS.from_documents(documents, OpenAIEmbeddings()).as_retriever()
